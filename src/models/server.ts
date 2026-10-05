@@ -41,6 +41,10 @@ export class Server {
                     || data.message === ''
                     || data.action === 'connection'
                 ) {
+                    // Replicar mensagem para todos os clientes conectados quando conectado
+                    if (this.socket) {
+                        this.socket.write(JSON.stringify(messages));
+                    }
                     return;
                 }
                 messages.push(data);
