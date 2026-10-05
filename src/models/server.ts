@@ -21,7 +21,6 @@ export class Server {
         if (this.socket) {
             this.socket.on("data", (data) => {
                 data = data.toString();
-                data = JSON.parse(data);
                 console.log(`Received: ${data}`);
                 const path = process.cwd() + '/messages.json';
                 console.log('debug: path >>', path);
@@ -32,6 +31,13 @@ export class Server {
                 }
                 const messages = JSON.parse(fs.readFileSync(path, 'utf-8'));
                 console.log('debug: messages >>', messages);
+                if (
+                    JSON.parse(data).message === undefined
+                    || JSON.parse(data).message === ''
+                    || JSON.parse(data).message === 'connected'
+                ) {
+                    return;
+                }
                 messages.push(data);
                 console.log('debug: updated messages >>', messages);
                 fs.writeFileSync(path, JSON.stringify(messages, null, 2));
