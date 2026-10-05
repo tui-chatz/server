@@ -1,5 +1,6 @@
 import net from "node:net";
 import fs from "node:fs";
+import type { TMessage } from "../types/message";
 
 export class Server {
     private port: number = Number(process.env.TUI_CHAT_SERVER_PORT);
@@ -19,28 +20,36 @@ export class Server {
 
     private recieveMessage(): void {
         if (this.socket) {
-            this.socket.on("data", (data) => {
-                data = data.toString();
-                console.log(`Received: ${data}`);
+            this.socket.on("data", (data: TMessage | string) => {
+                data = data.toString() as string;
+                data = JSON.parse(data) as TMessage;
+                console.log(`Received: ${JSON.stringify(data, null, 2)}`);
+
                 const path = process.cwd() + '/messages.json';
-                console.log('debug: path >>', path);
+
+                // Valida se mensagem existe e não é vazia
                 const messagesExists = fs.existsSync(path);
-                console.log('debug: messagesExists >>', messagesExists);
                 if (!messagesExists) {
                     fs.writeFileSync(path, JSON.stringify([]));
                 }
-                const messages = JSON.parse(fs.readFileSync(path, 'utf-8'));
-                console.log('debug: messages >>', messages);
+
+                const messages: TMessage[] = JSON.parse(fs.readFileSync(path, 'utf-8'));
+
+                // Valida se a mensagem recebida é válida, ou se é uma mensagem de conexão
                 if (
-                    JSON.parse(data).message === undefined
-                    || JSON.parse(data).message === ''
-                    || JSON.parse(data).message === 'connected'
+                    data.message === undefined
+                    || data.message === ''
+                    || data.action === 'connection'
                 ) {
                     return;
                 }
                 messages.push(data);
-                console.log('debug: updated messages >>', messages);
                 fs.writeFileSync(path, JSON.stringify(messages, null, 2));
+
+                // Replicar mensagem para todos os clientes conectados
+                if (this.socket) {
+                    this.socket.write(JSON.stringify(messages));
+                }
             });
             return;
         }
