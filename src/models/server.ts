@@ -5,10 +5,12 @@ import type { TMessage } from "../types/message";
 export class Server {
     private port: number = Number(process.env.TUI_CHAT_SERVER_PORT);
     private socket: net.Socket | null = null;
+    private clients: Set<net.Socket> = new Set();
 
     public run(): void {
         const server = net.createServer((socket) => {
             this.socket = socket;
+            this.clients.add(socket);
             this.recieveMessage();
             this.endConnection();
         });
@@ -16,6 +18,12 @@ export class Server {
         server.listen(this.port, () => {
             console.log(`Server listening on port ${this.port}`);
         });
+    }
+
+    private broadcastMessage(messages: TMessage[]): void {
+        for (const client of this.clients) {
+            client.write(JSON.stringify(messages));
+        }
     }
 
     private recieveMessage(): void {
@@ -42,18 +50,14 @@ export class Server {
                     || data.action === 'connection'
                 ) {
                     // Replicar mensagem para todos os clientes conectados quando conectado
-                    if (this.socket) {
-                        this.socket.write(JSON.stringify(messages));
-                    }
+                    this.broadcastMessage(messages);
                     return;
                 }
                 messages.push(data);
                 fs.writeFileSync(path, JSON.stringify(messages, null, 2));
 
                 // Replicar mensagem para todos os clientes conectados
-                if (this.socket) {
-                    this.socket.write(JSON.stringify(messages));
-                }
+                this.broadcastMessage(messages);
             });
             return;
         }
