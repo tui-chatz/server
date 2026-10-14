@@ -1,16 +1,19 @@
 import net from "node:net";
 import fs from "node:fs";
 import type { TMessage } from "../types/message";
+import type { MessageRepository } from "../repositories/message";
 
 export class Server {
     private port: number = Number(process.env.TUI_CHAT_SERVER_PORT);
     private socket: net.Socket | null = null;
-    private clients: Set<net.Socket> = new Set();
+    private clients: net.Socket[] = [];
+
+    constructor(private messageRepository: MessageRepository) {}
 
     public run(): void {
         const server = net.createServer((socket) => {
             this.socket = socket;
-            this.clients.add(socket);
+            this.clients.push(socket);
             this.recieveMessage();
             this.endConnection();
         });
@@ -31,18 +34,17 @@ export class Server {
             this.socket.on("data", (data: TMessage | string) => {
                 data = data.toString() as string;
                 data = JSON.parse(data) as TMessage;
-                console.log(`Received: ${JSON.stringify(data, null, 2)}`);
 
-                const path = process.cwd() + '/messages.json';
-
-                // Valida se mensagem existe e não é vazia
-                const messagesExists = fs.existsSync(path);
-                if (!messagesExists) {
-                    fs.writeFileSync(path, JSON.stringify([]));
-                }
-
-                const messages: TMessage[] = JSON.parse(fs.readFileSync(path, 'utf-8'));
-
+                // // const path = process.cwd() + '/messages.json';
+// // 
+                // // // Valida se mensagem existe e não é vazia
+                // // const messagesExists = fs.existsSync(path);
+                // // if (!messagesExists) {
+                // //     fs.writeFileSync(path, JSON.stringify([]));
+                // // }
+// // 
+                // // const messages: TMessage[] = JSON.parse(fs.readFileSync(path, 'utf-8'));
+                
                 // Valida se a mensagem recebida é válida, ou se é uma mensagem de conexão
                 if (
                     data.message === undefined
@@ -50,14 +52,14 @@ export class Server {
                     || data.action === 'connection'
                 ) {
                     // Replicar mensagem para todos os clientes conectados quando conectado
-                    this.broadcastMessage(messages);
+                    this.broadcastMessage(this.messageRepository.get());
                     return;
                 }
-                messages.push(data);
-                fs.writeFileSync(path, JSON.stringify(messages, null, 2));
+                
+                this.messageRepository.save(data);
 
                 // Replicar mensagem para todos os clientes conectados
-                this.broadcastMessage(messages);
+                this.broadcastMessage(this.messageRepository.get());
             });
             return;
         }
