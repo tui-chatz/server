@@ -2,13 +2,14 @@ import net from "node:net";
 import fs from "node:fs";
 import type { TMessage } from "../types/message";
 import type { MessageRepository } from "../repositories/message";
+import type { GenericCacheRepository } from "../repositories/generic-cache";
 
 export class Server {
     private port: number = Number(process.env.TUI_CHAT_SERVER_PORT);
     private socket: net.Socket | null = null;
     private clients: net.Socket[] = [];
 
-    constructor(private messageRepository: MessageRepository) {}
+    constructor(private messageRepository: GenericCacheRepository<TMessage>) {}
 
     public run(): void {
         const server = net.createServer((socket) => {

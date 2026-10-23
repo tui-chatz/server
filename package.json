@@ -15,5 +15,8 @@
     "start": "bun index.ts",
     "dev": "bun --watch index.ts",
     "create:env": "cp .env.example .env"
+  },
+  "dependencies": {
+    "node-cache": "^5.1.2"
   }
 }
